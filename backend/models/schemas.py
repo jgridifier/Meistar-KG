@@ -65,7 +65,11 @@ class Session(BaseModel):
     kg_session_context: dict = {}
     annotations: list[Annotation] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    status: Literal["ingesting", "processing", "ready", "playing", "complete"] = "ingesting"
+    status: Literal[
+        "ingesting", "processing", "ready", "playing", "complete", "failed"
+    ] = "ingesting"
+    error_message: str | None = None
+    metadata: dict = Field(default_factory=dict)
     total_cost_usd: float = 0.0
 
 

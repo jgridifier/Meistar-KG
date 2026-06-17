@@ -20,6 +20,9 @@ frontend/.next/
 *.sqlite
 uploads/
 audio_cache/
+data/
+cost_log.jsonl
+.java/
 
 # IDE
 .vscode/

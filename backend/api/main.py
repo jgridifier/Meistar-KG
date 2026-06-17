@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.models.schemas import (
@@ -28,12 +28,22 @@ _sessions: dict[str, Session] = {}
 
 
 @app.post("/sessions", response_model=Session)
-async def create_session(req: CreateSessionRequest) -> Session:
+async def create_session(
+    req: CreateSessionRequest,
+    background_tasks: BackgroundTasks,
+) -> Session:
     """Start processing a paper from a URL."""
+    from backend.agents.ingestion import run_ingestion
+
     session = Session(paper_url=req.paper_url)
     _sessions[session.id] = session
 
-    # TODO: kick off ingestion pipeline (background task)
+    background_tasks.add_task(
+        run_ingestion,
+        session.id,
+        _sessions,
+        llm_provider=req.llm_provider,
+    )
 
     return session
 

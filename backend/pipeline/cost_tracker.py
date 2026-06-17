@@ -30,6 +30,20 @@ COST_TABLE: dict[str, dict[str, float]] = {
 _COST_LOG_PATH = Path("cost_log.jsonl")
 
 
+def _lookup_rates(provider: str, model: str) -> dict[str, float]:
+    """Resolve cost rates with provider-specific and shared model fallbacks."""
+    candidates = [
+        f"{provider}/{model}",
+        f"openai/{model}",
+        f"openrouter/{model}",
+    ]
+    for key in candidates:
+        rates = COST_TABLE.get(key)
+        if rates:
+            return rates
+    return {}
+
+
 def compute_cost(
     provider_model: str,
     call_type: Literal["llm", "tts", "vision"],
@@ -38,7 +52,11 @@ def compute_cost(
     chars: int | None = None,
 ) -> float:
     """Compute USD cost for a single API call."""
-    rates = COST_TABLE.get(provider_model, {})
+    if "/" in provider_model:
+        provider, model = provider_model.split("/", 1)
+        rates = _lookup_rates(provider, model)
+    else:
+        rates = COST_TABLE.get(provider_model, {})
     if call_type == "tts":
         return (chars or 0) * rates.get("chars", 0.0) / 1_000_000
     else:
@@ -57,8 +75,13 @@ def record_call(
     chars: int | None = None,
 ) -> CostRecord:
     """Record a call and return the CostRecord with computed cost."""
-    provider_model = f"{provider}/{model}"
-    cost = compute_cost(provider_model, call_type, input_tokens, output_tokens, chars)
+    cost = compute_cost(
+        f"{provider}/{model}",
+        call_type,
+        input_tokens,
+        output_tokens,
+        chars,
+    )
 
     record = CostRecord(
         session_id=session_id,
